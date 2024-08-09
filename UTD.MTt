@@ -1,0 +1,691 @@
+#include "MT-151HMI.h" // UTD Inventia / Kinco
+// BITS ════════════════════════════════════════════════════════════════════════════╗
+	#define Telemando	0x01 &0x0640 [1-16]		// P1	- P16		640		HR100	║
+	#define Estado1		0x01 &0x0650 [1-16]		// P17	- P32		650		HR101	║
+	#define Estado2		0x01 &0x0660 [1-16]		// P33	- P48		660		HR102	║
+	#define Estado3		0x01 &0x0670 [1-16]		// P49	- P64		670		HR103	║
+	#define Estado4		0x01 &0x0680 [1-16]		// P65	- P80		680		HR104	║
+	#define Alarma1		0x01 &0x0690 [1-16]		// P81	- P96		690		HR105	║
+	#define Alarma2		0x01 &0x06A0 [1-16]		// P97	- P112		6A0		HR106	║
+	#define Alarma3		0x01 &0x06B0 [1-16]		// P113 - P128		6B0		HR107	║
+	#define Alarma4		0x01 &0x06C0 [1-16]		// P129 - P144		6C0		HR108	║
+	#define Permisivo1	0x01 &0x06D0 [1-16]		// P145 - P160		6D0		HR109	║
+	#define Permisivo2	0x01 &0x06E0 [1-16]		// P161 - P176		6E0		HR110	║
+	#define Permisivo3	0x01 &0x06F0 [1-16]		// P177 - P192		6F0		HR111	║
+	#define Permisivo4	0x01 &0x0700 [1-16]		// P193 - P208		700		HR112	║
+	#define Otro1		0x01 &0x0710 [1-16]		// P209 - P224		710		HR113	║
+	#define Otro2		0x01 &0x0720 [1-16]		// P225 - P240		720		HR114	║
+	#define BitTemp		0x01 &0x0730 [1-16]		// P241 - P256		730		HR115	║
+//──────────────────────────────────────────────────────────────────────────────────╣
+	#define Telemandos	hreg&100				// ─┐								║
+	#define Estados1	hreg&101				//	│								║
+	#define Estados2	hreg&102				//	│								║
+	#define Estados3	hreg&103				//	│								║
+	#define Estados4	hreg&104				//	│								║
+	#define Alarmas1	hreg&105				//	│								║
+	#define Alarmas2	hreg&106				//	│	Tablas para proceso			║
+	#define Alarmas3	hreg&107				//	├─>	interno de detección		║
+	#define Alarmas4	hreg&108				//	│	de cambios					║
+	#define Permisivos1	hreg&109				//	│								║
+	#define Permisivos2	hreg&110				//	│								║
+	#define Permisivos3	hreg&111				//	│								║
+	#define Permisivos4	hreg&112				//	│								║
+	#define Otros1		hreg&113				//	│								║
+	#define Otros2		hreg&114				//	│								║
+	#define Tabla16		hreg&115				// ─┘								║
+//═════════════════════════════════════════════════════════════════════════════════*/
+// PARÁMETROS ══════════════════════════════════════════════════════════════╗
+/*	#define	NS1							0x05 &0x00BA	// DREG1	372		║
+	#define	NS2							0x05 &0x00BB	// DREG2	374		║
+	#define	NS3							0x05 &0x00BC	// DREG3	376		║
+	#define	NS4							0x05 &0x00BD	// DREG4	378		║
+	#define	NS5							0x05 &0x00BE	// DREG5	380		║
+	#define	NS6							0x05 &0x00BF	// DREG6	382		║
+	#define	NS7							0x05 &0x00C0	// DREG7	384		║
+	#define	NS8							0x05 &0x00C1	// DREG8	386		║
+	#define	NS9							0x05 &0x00C2	// DREG9	388		║
+	#define	NSUTR						0x05 &0x00C3	// DREG10	390		║
+	#define	UV							0x05 &0x00C4	// DREG11	392		║
+	#define	TiempoLectura				0x05 &0x00C5	// DREG12	394		║
+	#define	ConteoTiempo				0x05 &0x00C6	// DREG13	396		║
+	#define	ConfigMB					0x05 &0x00C7	// DREG14	398		║
+	#define	ConfigMB2					0x05 &0x00C8	// DREG15	400		║
+	#define	ConfigMB3					0x05 &0x00C9	// DREG16	402		║
+	#define	ConfigMB4					0x05 &0x00CA	// DREG17	404		║
+	#define	ConfigMB5					0x05 &0x00CB	// DREG18	406		║
+	#define	TiempoMuestreo				0x05 &0x00CC	// DREG19	408		║
+	#define	ConteoMuestreo				0x05 &0x00CD	// DREG20	410		║
+*/	#define	Conteo						0x05 &0x00CE	// DREG21	412		║
+//	#define	Prueba						0x05 &0x00CF	// DREG22	414		║
+	#define	Conteo2						0x05 &0x00D0	// DREG23	416		║
+/*	#define	RFC3						0x05 &0x00D1	// DREG24	418		║
+	#define	RFC4 						0x05 &0x00D2	// DREG25	420		║
+	#define	RFC5						0x05 &0x00D3	// DREG26	422		║
+	#define	RFC6						0x05 &0x00D4	// DREG27	424		║
+	#define	RFC7						0x05 &0x00D5	// DREG28	426		║
+	#define	NumTel						0x05 &0x00D6	// DREG29	428		║
+	#define	TipoMensaje					0x05 &0x00D7	// DREG30	430		║
+/*	#define	Hr3							0x05 &0x00D8	// DREG31	432		║
+	#define	Hr4							0x05 &0x00D9	// DREG32	434		║
+	#define	Hr5							0x05 &0x00DA	// DREG33	436		║
+	#define	Hr6							0x05 &0x00DB	// DREG34	438		║
+/*	#define							0x05 &0x00DC	// DREG35	440			║
+	#define							0x05 &0x00DD	// DREG36	442			║
+	#define							0x05 &0x00DE	// DREG37	444			║
+	#define							0x05 &0x00DF	// DREG38	446			║
+	#define							0x05 &0x00E0	// DREG39	448			║
+	#define							0x05 &0x00E1	// DREG40	450			║
+	#define							0x05 &0x00E2	// DREG41	452			║
+	#define							0x05 &0x00E3	// DREG42				║
+	#define							0x05 &0x00E4	// DREG43				║
+	#define							0x05 &0x00E5	// DREG44				║
+	#define							0x05 &0x00E6	// DREG45				║
+	#define							0x05 &0x00E7	// DREG46				║
+	#define							0x05 &0x00E8	// DREG47				║
+	#define							0x05 &0x00E9	// DREG48				║
+	#define							0x05 &0x00EA	// DREG49				║
+	#define							0x05 &0x00EB	// DREG50				║
+//═════════════════════════════════════════════════════════════════════════*/
+// ANALÓGICAS ══════════════════════════════════════════════════════════════╗
+//	#define	Caudal 					0x05 &0x00EC	// DREG51		472		║
+//	#define	CaudalEnt1 					hreg&472	// DREG51		472		║
+//	#define	Totalizado				0x05 &0x00ED	// DREG52		474		║
+//	#define	TotalizadoEnt1 				hreg&474	// DREG52		474		║
+//	#define	TotalizadoEnt2 				hreg&475	// DREG52		475		║
+/*	#define	Minutos 				0x05 &0x00F0	// DREG55		480		║
+	#define	Segundos				0x05 &0x00F1	// DREG56		482		║
+	#define	RFC						0x05 &0x00F2	// DREG57		484		║
+	#define	RFC1					0x05 &0x00F3	// DREG58		486		║
+	#define	RFC2					0x05 &0x00F4	// DREG59		488		║
+	#define	RFC3					0x05 &0x00F5	// DREG60		490		║
+	#define	RFC4				 	0x05 &0x00F6	// DREG61		492		║
+	#define	RFC5					0x05 &0x00F7	// DREG62		494		║
+	#define	RFC6					0x05 &0x00F8	// DREG63		496		║
+	#define	RFC7					0x05 &0x00F9	// DREG64		498		║
+	#define	CaudalEnt				0x05 &0x00FA	// DREG65		500		║
+	#define	CaudalDec				0x05 &0x00FB	// DREG66		502		║
+	#define	Caudal			 		0x05 &0x00FC	// DREG67		504		║
+	#define	Totalizado				0x05 &0x00FD	// DREG68		506		║
+	#define	Latitud					0x05 &0x00FE	// DREG69		508		║
+	#define	Latitud2			 	0x05 &0x00FF	// DREG70		510		║
+	#define	Longitud				0x05 &0x0100	// DREG71		512		║
+	#define	Longitud2				0x05 &0x0101	// DREG72		514		║
+	#define	Error					0x05 &0x0102	// DREG73		516		║
+	#define	HoraEnvio 				0x05 &0x0103	// DREG74		518		║
+	#define	MinEnvio			 	0x05 &0x0104	// D			║
+/	#define	Fecha					0x05 &0x0105	// DREG76		522		║
+	#define	Hora				 	0x05 &0x0106	// DREG77		524		║
+//	#define	Factor		 			0x05 &0x0107	// DREG78		526		║
+	#define	DREGproc	 			hreg&526		// DREG78		526		║526
+	#define	DREGproc2	 			hreg&527		// DREG78		527		║527
+	#define	DREGproc3	 			hreg&552		// DREG90		552		║552
+	#define	DREGproc4	 			hreg&553		// DREG90		553		║553
+	#define	DREGproc5	 			hreg&554		// DREG91		554		║554
+	#define	DREGproc6	 			hreg&555		// DREG91		555		║555
+//═════════════════════════════════════════════════════════════════════════*/
+// ENTRADAS DIGITALES ══════════════════════════════════════════════════╗
+	#define BateriaBaja			0x02 &0x0110		// I1				║
+	#define CA					0x02 &0x0111		// I2				║
+/*	#define RetroavisoBomba3	0x02 &0x0112		// I3				║
+	#define RetroavisoBomba4	0x02 &0x0113		// I4				║
+	#define RetroavisoBomba5	0x02 &0x0114		// I5				║
+	#define Puerta				0x02 &0x0115		// I6				║
+	#define Movimiento			0x02 &0x0116		// I7				║
+/*	#define 					0x02 &0x0117		// I8				║
+	#define 					0x02 &0x0118		// I9				║
+	#define 					0x02 &0x0119		// I10				║
+	#define 					0x02 &0x011A		// I11				║
+	#define 					0x02 &0x011B		// I12				║
+	#define CA					0x02 &0x011C		// I13				║
+	#define BateriaBaja			0x02 &0x011D		// I14				║
+	#define 					0x02 &0x011E		// I15				║
+	#define 					0x02 &0x011F		// I16				║
+// SALIDAS DIGITALES ═══════════════════════════════════════════════════╣
+/*	#define werasd				0x01 &0x0030		// Q1				║
+	#define asdfas				0x01 &0x0031		// Q2				║
+	#define						0x01 &0x0032		// Q3				║
+	#define						0x01 &0x0033		// Q4				║
+	#define						0x01 &0x0034		// Q5				║
+	#define						0x01 &0x0035		// Q6				║
+	#define						0x01 &0x0036		// Q7				║
+	#define						0x01 &0x0037		// Q8				║
+	#define						0x01 &0x0038		// Q9				║
+	#define						0x01 &0x0039		// Q10				║
+	#define						0x01 &0x0040		// Q11				║
+	#define						0x01 &0x0041		// Q12				║
+//═════════════════════════════════════════════════════════════════════*/
+// Registros internos ──────────────────────────────────────────┐
+	#define Version						HR628		//			│
+	#define VersionKinco				hreg&629	// 	│
+//	#define BanderaSMS					hreg&630	// 	│
+//	...												//			│
+	#define ID							hreg&700	// │
+	#define Tipo						hreg&701	// │
+	#define RFC							hreg&708	// │
+	#define NSM							hreg&721	// │
+	#define NSUE						hreg&738	// │
+	#define NSUT						hreg&755	// │
+	#define Gasto						hreg&772	// │
+	#define Vol							hreg&773	// │
+	#define Lec							hreg&774	// │
+	#define Lat							hreg&775	// │
+	#define Long						hreg&786	// │
+	#define Ker							hreg&801	// │
+	#define UV							hreg&802	// │
+	#define Tel							hreg&810	// │
+	#define HoraEnvio					hreg&820	// │
+	#define MinEnvio					hreg&821	// │
+	#define DUltimoSMS					hreg&822
+	#define MUltimoSMS					hreg&823
+	#define AUltimoSMS					hreg&824
+	#define HrUltimoSMS					hreg&825
+	#define MinUltimoSMS				hreg&826
+	#define Servidor					hreg&827	// │
+	#define Usuario						hreg&842	// │
+	#define Password					hreg&877	// │
+	#define Carpeta						hreg&912	// │
+	#define Extension					hreg&947	// │
+	#define HoraEnvioFTP				hreg&952	// │
+	#define MinEnvioFTP					hreg&953	// │
+	#define DUltimoFTP					hreg&954
+	#define MUltimoFTP					hreg&955
+	#define AUltimoFTP					hreg&956
+	#define HrUltimoFTP					hreg&957
+	#define MinUltimoFTP				hreg&958
+	#define Tel2						hreg&959	// │
+	#define HoraEnvio2					hreg&969	// │
+	#define MinEnvio2					hreg&970	// │
+	#define DUltimoSMS2					hreg&971
+	#define MUltimoSMS2					hreg&972
+	#define AUltimoSMS2					hreg&973
+	#define HrUltimoSMS2				hreg&974
+	#define MinUltimoSMS2				hreg&975
+	#define Servidor2					hreg&976	// │
+	#define Usuario2					hreg&991	// │
+	#define Password2					hreg&1026	// │
+	#define Carpeta2					hreg&1050	// │
+	#define Extension2					hreg&1096	// │
+	#define HoraEnvioFTP2				hreg&1101	// │
+	#define MinEnvioFTP2				hreg&1102	// │
+	#define DUltimoFTP2					hreg&1103
+	#define MUltimoFTP2					hreg&1104
+	#define AUltimoFTP2					hreg&1105
+	#define HrUltimoFTP2				hreg&1106
+	#define MinUltimoFTP2				hreg&1107
+//─────────────────────────────────────────────────────────────*/
+// Registros internos Kinco ────────────────────────────────────
+	#define kID							hreg&1200	// │
+	#define kTipo						hreg&1201	// │
+	#define kDia						hreg&1202	// │
+	#define kMes						hreg&1203	// │
+	#define kAño						hreg&1204	// │
+	#define kHoras						hreg&1205	// │
+	#define kMinutos					hreg&1206	// │
+	#define kSegundos					hreg&1207	// │
+	#define kRFC						hreg&1208	// │
+	#define kNSM						hreg&1221	// │
+	#define kNSUE						hreg&1238	// │
+	#define kNSUT						hreg&1255	// │
+	#define kGasto						hreg&1272	// │
+	#define kVol						hreg&1273	// │
+	#define kLec						hreg&1274	// │
+	#define kLat						hreg&1275	// │
+	#define kLong						hreg&1286	// │
+	#define kKer						hreg&1301	// │
+	#define kUV							hreg&1302	// │
+//	...												//			│
+	#define kTel						hreg&1310	// │
+	#define kHoraEnvio					hreg&1320	// │
+	#define kMinEnvio					hreg&1321	// │
+	#define kDUltimoSMS					hreg&1322
+	#define kMUltimoSMS					hreg&1323
+	#define kAUltimoSMS					hreg&1324
+	#define kHrUltimoSMS				hreg&1325
+	#define kMinUltimoSMS				hreg&1326
+	#define kServidor					hreg&1327	// │
+	#define kUsuario					hreg&1342	// │
+	#define kPassword					hreg&1377	// │
+	#define kCarpeta					hreg&1412	// │
+	#define kExtension					hreg&1447	// │
+	#define kHoraEnvioFTP				hreg&1452	// │
+	#define kMinEnvioFTP				hreg&1453	// │
+	#define kDUltimoFTP					hreg&1454
+	#define kMUltimoFTP					hreg&1455
+	#define kAUltimoFTP					hreg&1456
+	#define kHrUltimoFTP				hreg&1457
+	#define kMinUltimoFTP				hreg&1458
+	#define kTel2						hreg&1459	// │
+	#define kHoraEnvio2					hreg&1469	// │
+	#define kMinEnvio2					hreg&1470	// │
+	#define kDUltimoSMS2				hreg&1471
+	#define kMUltimoSMS2				hreg&1472
+	#define kAUltimoSMS2				hreg&1473
+	#define kHrUltimoSMS2				hreg&1474
+	#define kMinUltimoSMS2				hreg&1475
+	#define kServidor2					hreg&1476	// │
+	#define kUsuario2					hreg&1491	// │
+	#define kPassword2					hreg&1526	// │
+	#define kCarpeta2					hreg&1561	// │
+	#define kExtension2					hreg&1596	// │
+	#define kHoraEnvioFTP2				hreg&1601	// │
+	#define kMinEnvioFTP2				hreg&1602	// │
+	#define kDUltimoFTP2				hreg&1603
+	#define kMUltimoFTP2				hreg&1604
+	#define kAUltimoFTP2				hreg&1605
+	#define kHrUltimoFTP2				hreg&1606
+	#define kMinUltimoFTP2				hreg&1607
+//	...												//			│
+	#define kVersionKinco				hreg&1610	// │
+	#define kVersionInventia			hreg&1611	// │
+//	...												//			│
+	#define TipoDatoCaudal				hreg&1613	// │
+	#define TipoDatoTotal				hreg&1614	// │
+	#define kAlarmas					hreg&1615	// │
+	#define kEstados					hreg&1616	// │
+	#define kTelemandos					hreg&1617	// │
+	#define kPermisivos					hreg&1618	// │
+//─────────────────────────────────────────────────────────────────*/
+
+
+//█████████████████████████████████	PRINCIPAL ███████████████████████████████████
+																MOVE 135, Version
+//	IF FS1_new CALL Inicial		// Después de descargar app...					
+//	IF FS1_fs CALL Reinicio		// Despues de reiniciar...						
+	CALL General				// Procesos generales							
+	CALL Kinco					// Procesa variables modbus Kinco				
+	CALL Alarmas				// Procesa alarmas								
+	CALL Analogicas				// Procesa analógicas							
+	CALL SMS					// Procesa mensajes SMS							
+	CALL FTP					// Procesa mensajes FTP				   			
+EXT//██████████████████████████████████████████████████████████████████████*/EXT
+
+General: //═════════════════════════════════════════════════════════════════════════════╗
+//	GT Datalogger, 0, P256								//  > Contador					║
+//	IF RISE FS2_rtc_sec SUB Datalogger, P256, Datalogger// ┘							║
+//	IF P256 MOVE 0, P215
+//	...												//			│
+//	EQ Datalogger, 0, P255
+//	IF P255 MOVE 1, P215
+//	IF P255 MOVE 5, Datalogger
+	MOVE kTelemandos, Telemandos
+//	IF RISE CT2 MOVE 1, P215
+//	MOVE 1, HR8191
+RET//═══════════════════════════════════════════════════════════════════════════════*/RET
+Kinco: //═══════════════════════════════════════════════════════════════════════════════╗
+	GT kID, 0, P256										//								║
+		IF P256 TCPY kID, 1, ID							//								║
+		IF NOT P256 TCPY ID, 1, kID						// 								║
+	GT kTipo, 0, P256									//								║
+		IF P256 TCPY kTipo, 1, Tipo						//								║
+		IF NOT P256 TCPY Tipo, 1, kTipo					// 								║
+	GT kRFC, 0, P256									//								║
+		IF P256 TCPY kRFC, 13, RFC						// 								║
+		IF NOT P256 TCPY RFC, 13, kRFC					// 								║
+	GT kNSM, 0, P256									//								║
+		IF P256 TCPY kNSM, 17, NSM						// 								║
+		IF NOT P256 TCPY NSM, 17, kNSM					// 								║
+	GT kNSUE, 0, P256									//								║
+		IF P256 TCPY kNSUE, 17, NSUE					// 								║
+		IF NOT P256 TCPY NSUE, 17, kNSUE				// 								║
+	GT kNSUT, 0, P256									//								║
+		IF P256 TCPY kNSUT, 17, NSUT					// 								║
+		IF NOT P256 TCPY NSUT, 17, kNSUT				// 								║
+	TCPY Lec, 1, kLec									// 								║
+	GT kLat, 0, P256									//								║
+		IF P256 TCPY kLat, 11, Lat						// 								║
+		IF NOT P256 TCPY Lat, 11, kLat					// 								║
+	GT kLong, 0, P256									//								║
+		IF P256 TCPY kLong, 15, Long					// 								║
+		IF NOT P256 TCPY Long, 15, kLong				// 								║
+	TCPY Ker, 1, kKer									// 								║
+	GT kUV, 0, P256										//								║
+		IF P256 TCPY kUV, 1, UV							// 								║
+		IF NOT P256 TCPY UV, 1, kUV						// 								║
+
+	GT kTel, 0, P256									//								║
+		IF P256 TCPY kTel, 10, Tel						// 								║
+		IF NOT P256 TCPY Tel, 10, kTel					// 								║
+	GT kHoraEnvio, 0, P256								//								║
+		IF P256 TCPY kHoraEnvio, 1, HoraEnvio			// 								║
+		IF NOT P256 TCPY HoraEnvio, 1, kHoraEnvio		// 								║
+	GT kMinEnvio, 0, P256								//								║
+		IF P256 TCPY kMinEnvio, 1, MinEnvio				// 								║
+		IF NOT P256 TCPY MinEnvio, 1, kMinEnvio			// 								║
+
+	GT kServidor, 0, P256								//								║
+		IF P256 TCPY kServidor, 15, Servidor			// 								║
+		IF NOT P256 TCPY Servidor, 15, kServidor		// 								║
+	GT kUsuario, 0, P256								//								║
+		IF P256 TCPY kUsuario, 35, Usuario				// 								║
+		IF NOT P256 TCPY Usuario, 35, kUsuario			// 								║
+	GT kPassword, 0, P256								//								║
+		IF P256 TCPY kPassword, 35, Password			// 								║
+		IF NOT P256 TCPY Password, 35, kPassword		// 								║
+	GT kCarpeta, 0, P256								//								║
+		IF P256 TCPY kCarpeta, 35, Carpeta				// 								║
+		IF NOT P256 TCPY Carpeta, 35, kCarpeta			// 								║
+	GT kExtension, 0, P256								//								║
+		IF P256 TCPY kExtension, 5, Extension			// 								║
+		IF NOT P256 TCPY Extension, 5, kExtension		// 								║
+	GT kHoraEnvioFTP, 0, P256							//								║
+		IF P256 TCPY kHoraEnvioFTP, 1, HoraEnvioFTP		// 								║
+		IF NOT P256 TCPY HoraEnvioFTP, 1, kHoraEnvioFTP	// 								║
+	GT kMinEnvioFTP, 0, P256							//								║
+		IF P256 TCPY kMinEnvioFTP, 1, MinEnvioFTP		// 								║
+		IF NOT P256 TCPY MinEnvioFTP, 1, kMinEnvioFTP	// 								║
+
+	TCPY Version, 1, kVersionInventia					// 								║
+	TCPY Alarmas1, 1, kAlarmas							// 								║
+	TCPY Estados1, 1, kEstados							// 								║
+	TCPY kTelemandos, 1, Telemandos						// 								║
+	TCPY kPermisivos, 1, Permisivos1					// 								║
+RET//═══════════════════════════════════════════════════════════════════════════════*/RET
+Alarmas: //═════════════════════════════════════════════════════════════════════════════╗
+MOVE 0, Tabla16										// Borra bits temporales			║
+	NOTV CA, Alarma11								// Falla CA							║
+	BCPY BateriaBaja, Alarma12						// Batería baja						║
+
+	NOTV FS1_gsm, Alarma14							// GSM OK							║
+	NOTV FS1_gprs, Alarma15							// GPRS OK							║
+RET//═══════════════════════════════════════════════════════════════════════════════*/RET
+SMS: //═════════════════════════════════════════════════════════════════════════════════════════════════════╗
+	EQ kHoras, HoraEnvio, P256					// ┐ 														║
+	IF Permisivo11 MOVE 1, P256					//	Para prueba de envío SMS cada hora
+		IF P256	EQ kMinutos, MinEnvio, P256		// ├─> Activa envío automático								║
+		IF P256	LT RTC_Sec, 2, Telemando2		// ┘														║
+
+	OR Telemando2, Telemando3, P256				//															║
+	OR Telemando4, P256, P256					//															║
+	IF P256 TCPY kTel, 10, HR2000				// Configurar registro en GSM->Authorized numbers->Phone	║
+	OR Telemando8, Telemando9, P255				//															║
+	OR Telemando10, P255, P255					//															║
+	IF P255 TCPY kTel2, 10, HR2000				// Configurar registro en GSM->Authorized numbers->Phone	║
+
+	OR P256, P255, P254
+	IF NOT P254 RET
+//	TCPY Tel, 10, NumTel1				// Copia número telefónico											║
+	IF P256 MOVE kDia, kDUltimoSMS				// ┐														║
+	IF P256 MOVE kMes, kMUltimoSMS				// │														║
+	IF P256 MOVE kAño, kAUltimoSMS				// ├─>														║
+	IF P256 MOVE kHoras, kHrUltimoSMS			// │														║
+	IF P256 MOVE kMinutos, kMinUltimoSMS		// ┘														║
+	IF P255 MOVE kDia, kDUltimoSMS2				// ┐														║
+	IF P255 MOVE kMes, kMUltimoSMS2				// │														║
+	IF P255 MOVE kAño, kAUltimoSMS2				// ├─>														║
+	IF P255 MOVE kHoras, kHrUltimoSMS2			// │														║
+	IF P255 MOVE kMinutos, kMinUltimoSMS2		// ┘														║
+
+	MOVE 0, kTelemandos
+// Contenido del SMS ───────────────────────────────────────────────────────────────────────────────╣
+	IF P2 MOVE 1, kID					// ┐														║
+	IF P3 MOVE 2, kID					// ├─> Asigna ID correspondiente al tipo de mensaje			║
+	IF P4 MOVE 3, kID					// │														║
+	IF P8 MOVE 1, kID					// ┐														║
+	IF P9 MOVE 2, kID					// ├─> Asigna ID correspondiente al tipo de mensaje			║
+	IF P10 MOVE 3, kID					// │														║
+	MOVE 77, kTipo						// ┘														║
+TCPY HR6300, 128, HR6000				// Limpia buffer principal									║
+	NUM2TXT ID, 10, HR6000				// Tipo de mensaje (1-3) 									║
+TCPY HR6300, 128, HR6200				// ┐														║
+MOVE 124, HR6200						// ├─> Separa y limpia										║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	MOVE Tipo, HR6200					// Tipo de equipo "M" o "QA"								║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	NUM2TXT kAño, 40, HR6200			// Año														║
+	NUM2TXT kMes, 20, HR6204			// Mes														║
+	NUM2TXT kDia, 20, HR6206			// Día														║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	NUM2TXT kHoras, 20, HR6200			// Horas													║
+	NUM2TXT kMinutos, 20, HR6202		// Minutos													║
+	NUM2TXT kSegundos, 20, HR6204		// Segundos													║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	TCPY RFC, 13, HR6200				// Copia RFC ()												║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	TXTCPY kNSM, 17, HR6200				// Copia NSM												║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	TXTCPY kNSUE, 17, HR6200			// Copia NSUE												║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	TXTCPY kNSUT, 17, HR6200			// Copia NSUT												║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+//TCPY HR6300, 128, HR6200				// │														║
+//MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+//TXTCAT HR6200, 128, HR6000				// │														║
+//TCPY HR6300, 128, HR6200				// ┘														║
+
+//TCPY HR6300, 128, HR6100				// │														║
+//MOVE 124, HR6100						// ├─> Concatena, separa y limpia							║
+TCPY HR6300, 128, HR6100				// ┘														║
+	TXTCPY kLat, 11, HR6100				// Mueve Latitud											║
+//TXTCAT HR6200, 128, HR6100				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6100				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	TXTCPY kLong, 15, HR6200			// Mueve Longitud											║
+TXTCAT HR6200, 128, HR6100				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6100				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	NUM2TXT kKer, 30, HR6200			// Mueve Ker												║
+TXTCAT HR6200, 128, HR6100				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6100				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	MOVE 85, HR6200						// 															║
+	MOVE 86, HR6201						// 															║
+	NUM2TXT kUV, 30, HR6202				// Mueve UV													║
+TXTCAT HR6200, 128, HR6100				// ┐														║
+TCPY HR6300, 128, HR6200				// ├─> Concatena y limpia									║
+TXTCAT HR6200, 128, HR6100				// ┘														║
+RET //══════════════════════════════════════════════════════════════════════════════════════════*/RET
+Analogicas: //══════════════════════════════════════════════════════════════════════════════════════╗
+	EQ TipoDatoCaudal, 0, P256								// ┐									║
+		IF P256 FLO2INT Gasto, 2, DREG128					// ├─>32 bits, l/s, flotante			║
+		IF P256 MUL DREG128, 3.6, kGasto					// │									║
+
+NOTV P1SL1_ok, P256								// ┐								║
+	IF RISE FS2_rtc_min ADD P256, Conteo2, Conteo2	// ├─> Falla comm Tx Caudal			║
+	MUL Conteo2, P256, Conteo2						// │								║
+	GT Conteo2, 9, Alarma13							// ┘								║
+
+	EQ TipoDatoCaudal, 1, P256								// ┐									║
+		IF P256 FLO2INT Gasto, 2, kGasto				 	// ├─> Medidor Chino					║
+
+	EQ TipoDatoCaudal, 2, P256								// ┐									║
+		IF P256 FLO2INT Gasto, 2, kGasto					// 32 bits, l/s, flotante
+
+	EQ TipoDatoTotal, 0, P256								// ┐									║
+		IF P256 FLO2INT Vol, 0, kVol						// ┘									║
+
+	EQ TipoDatoTotal, 1, P256								// ┐									║
+		IF P256 DIV Vol, 10, kVol							// ┘									║
+
+	EQ TipoDatoTotal, 2, P256								// ┐									║
+		IF P256 FLO2INT Vol, 0, kVol						// 32 bits, l/s, flotante
+RET //══════════════════════════════════════════════════════════════════════════════════════════*/RET
+FTP: //═════════════════════════════════════════════════════════════════════════════════════════════╗
+/*	MOVE 0, Tabla16								// Borra bits temporales							║
+	EQ kHoras, HoraEnvioFTP, P256				// Compara hora actual con hora de envío			║
+		IF P256	EQ kMinutos, MinEnvioFTP, P256	// Compara minuto actual con minuto de envío		║
+		IF P256	LT RTC_Sec, 2, P213				// En el segundo 0 activa la bandera de envío		║
+*/	
+	IF NOT Telemando5 RET						// Si no se activa la bandera finaliza la rutina	║
+	MOVE 0, kTelemandos
+
+MOVE kDia, kDUltimoFTP					// ┐														║
+MOVE kMes, kMUltimoFTP					// │														║
+MOVE kAño, kAUltimoFTP					// ├─> Guarda el registro de tiempo del último FTP			║
+MOVE kHoras, kHrUltimoFTP				// │														║
+MOVE kMinutos, kMinUltimoFTP			// ┘														║
+
+//	MOVE P256, P5								// 													║
+// Configuración del servidor FTP ──────────────────────────────────────────────────────────────────║
+	TCPY kServidor, 15, HR3000					// Carga Dirección Servidor (192.190.80.131)		║
+	TCPY kUsuario, 35, HR3100					// Carga Usuario (hydromatico@soporte-ich.com.mx)	║
+	TCPY kPassword, 15, HR3200					// Carga Contraseña(Hydro.2016@soporte-ich.com.mx)	║
+// Nombre del archivo ──────────────────────────────────────────────────────────────────────────────
+	TCPY kCarpeta, 20, HR3300					// 													║
+	MOVE 47, HR3500								// Carga "/" (ASCII)								║
+TXTCAT HR3500, 128, HR3300						// Concatena "Nombre de carpeta" + "/"				║
+//──────────────────────────────────────────────────────────────
+	TCPY kRFC, 13, HR3501			// 																║
+MOVE 95, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR3501			// │														║
+TCPY HR6300, 128, HR6200			// ┘														║
+	NUM2TXT kAño, 40, HR6200		// Año						|									║
+TXTCAT HR6200, 128, HR3501			// │														║
+TCPY HR6300, 128, HR6200			// ┘														║
+	NUM2TXT kMes, 20, HR6200		// Año						|									║
+TXTCAT HR6200, 128, HR3501			// │														║
+TCPY HR6300, 128, HR6200			// ┘														║
+	NUM2TXT kDia, 20, HR6200		// Año						|									║
+TXTCAT HR6200, 128, HR3501			// │														║
+TCPY HR6300, 128, HR6200			// ┘														║
+MOVE 95, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR3501			// │														║
+TCPY HR6300, 128, HR6200			// ┘														║
+	TXTCPY kNSUT, 17, HR6200		// 															║
+TXTCAT HR6200, 128, HR3501			// │														║
+TCPY HR6300, 128, HR6200			// ┘														║
+MOVE 46, HR6200						// ├─> Extensión del archivo								║
+TXTCAT HR6200, 128, HR3501			// │														║
+TCPY HR6300, 128, HR6200			// ┘														║
+MOVE 116, HR6200					// ├─> Extensión del archivo								║
+TXTCAT HR6200, 128, HR3501			// │														║
+TCPY HR6300, 128, HR6200			// ┘														║
+MOVE 120, HR6200					// ├─> Extensión del archivo								║
+TXTCAT HR6200, 128, HR3501			// │														║
+TCPY HR6300, 128, HR6200			// ┘														║
+MOVE 116, HR6200					// ├─> Extensión del archivo								║
+TXTCAT HR6200, 128, HR3501			// │														║
+TCPY HR6300, 128, HR6200			// ┘														║
+
+	MOVE 13, HR5900					// Retorno de carro (ASCII)										║
+	MOVE 10, HR5901					// Nueva línea (ASCII)											║
+	MOVE 0, HR5902 					// CRLF -> HR5900 (temp2)										║
+// Contenido del archivo ───────────────────────────────────────────────────────────────────────────╣
+	IF P5 MOVE 1, kID					// ┐														║
+	IF P6 MOVE 2, kID					// ├─> Asigna ID correspondiente al tipo de mensaje			║
+	IF P7 MOVE 3, kID					// │														║
+	IF P11 MOVE 1, kID					// ┐														║
+	IF P12 MOVE 2, kID					// ├─> Asigna ID correspondiente al tipo de mensaje			║
+	IF P13 MOVE 3, kID					// │														║
+	MOVE 77, kTipo						//															║
+
+TCPY HR6300, 128, HR6000				// Limpia buffer principal									║
+	NUM2TXT ID, 10, HR6000					// Tipo de mensaje (1-3) 									║
+TCPY HR6300, 128, HR6200				// ┐														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	MOVE kTipo, HR6200					// Tipo de equipo "M" o "QA"								║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	NUM2TXT kAño, 40, HR6200			// Año														║
+	NUM2TXT kMes, 20, HR6204			// Mes														║
+	NUM2TXT kDia, 20, HR6206			// Día														║
+//	NUM2TXT Fecha, 80, HR6200			// 															║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	NUM2TXT kHoras, 20, HR6200			// Horas													║
+	NUM2TXT kMinutos, 20, HR6202			// Minutos													║
+	NUM2TXT kSegundos, 20, HR6204			// Segundos													║
+//	NUM2TXT Hora, 60, HR6013			// DREG														║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	TCPY kRFC, 13, HR6200				// Copia RFC ()												║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	TXTCPY kNSM, 17, HR6200				// Copia NSM												║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	TXTCPY kNSUE, 17, HR6200			// Copia NSUE												║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	TXTCPY kNSUT, 17, HR6200			// 															║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	NUM2TXT kVol, 90, HR6200			// Mueve Vol												║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	TXTCPY kLat, 11, HR6200				// 															║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	TXTCPY kLong, 15, HR6200			// 															║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	NUM2TXT kKer, 30, HR6200			// Mueve Ker												║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// │														║
+MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000				// │														║
+TCPY HR6300, 128, HR6200				// ┘														║
+	NUM2TXT kUV, 30, HR6200				// Mueve UV1												║
+TXTCAT HR6200, 128, HR6000				// ┐														║
+TCPY HR6300, 128, HR6200				// ├─> Concatena y limpia									║
+TXTCAT HR6200, 128, HR6000				// ┘														║
+
+	MOVE 1024, HR5000					// max. length												║
+	ADD 2048, HR5000, HR5000			// source: 1 ch/reg, destination: 2 ch/reg, LH				║** Todas las cadenas procesadas están en formato "1 carácter/registro"	║
+	TXTCPY HR6000, HR5000, HR4352		// load temp. buffer into main data buffer (starting from SECOND register!!)║#define UCS_TO_BIN 2048		// UCS->ASC_LH / Texto a secuencia binaria	║
+	MOVE 1024, HR5000					// max. length												║
+	ADD 8192, HR5000, HR5000			// specify source as 2 ch/reg, LH							║#define ASC_LH_SOURCE 8192	// Selecciona ASCII LH como fuente			║
+	TXTLEN HR4352, HR5000, HR4351		// compute length of text and load it into FIRST register	║
+RET//═══════════════════════════════════════════════════════════════════════════════════════════*/RET
