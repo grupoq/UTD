@@ -140,7 +140,7 @@
 	#define BateriaBaja			0x02 &0x011D		// I14				║
 	#define 					0x02 &0x011E		// I15				║
 	#define 					0x02 &0x011F		// I16				║
-// SALIDAS DIGITALES ═══════════════════════════════════════════════════╣
+// SALIDAS DIGITALES ───────────────────────────────────────────────────╣
 /*	#define werasd				0x01 &0x0030		// Q1				║
 	#define asdfas				0x01 &0x0031		// Q2				║
 	#define						0x01 &0x0032		// Q3				║
@@ -287,17 +287,17 @@
 //─────────────────────────────────────────────────────────────────*/
 
 
-//█████████████████████████████████	PRINCIPAL ███████████████████████████████████
-																MOVE 135, Version
-//	IF FS1_new CALL Inicial		// Después de descargar app...					
-//	IF FS1_fs CALL Reinicio		// Despues de reiniciar...						
-	CALL General				// Procesos generales							
-	CALL Kinco					// Procesa variables modbus Kinco				
-	CALL Alarmas				// Procesa alarmas								
-	CALL Analogicas				// Procesa analógicas							
-	CALL SMS					// Procesa mensajes SMS							
-	CALL FTP					// Procesa mensajes FTP				   			
-EXT//██████████████████████████████████████████████████████████████████████*/EXT
+//█████████████████████████████████████	PRINCIPAL ███████████████████████████████████
+																	MOVE 135, Version
+//	IF FS1_new CALL Inicial		// Después de descargar app...						
+//	IF FS1_fs CALL Reinicio		// Despues de reiniciar...							
+	CALL General				// Procesos generales								
+	CALL Kinco					// Procesa variables modbus Kinco					
+	CALL Alarmas				// Procesa alarmas									
+	CALL Analogicas				// Procesa analógicas								
+	CALL SMS					// Procesa mensajes SMS								
+	CALL FTP					// Procesa mensajes FTP				   				
+EXT//███████████████████████████████████████████████████████████████████████████*/EXT
 
 General: //═════════════════════════════════════════════════════════════════════════════╗
 //	GT Datalogger, 0, P256								//  > Contador					║
@@ -308,6 +308,10 @@ General: //═══════════════════════
 //	IF P255 MOVE 1, P215
 //	IF P255 MOVE 5, Datalogger
 	MOVE kTelemandos, Telemandos
+	MOVE Version, kVersionInventia						// 								║
+	MOVE Alarmas1, kAlarmas								// 								║
+	MOVE Estados1, kEstados								// 								║
+	MOVE kPermisivos, Permisivos1						// 								║
 //	IF RISE CT2 MOVE 1, P215
 //	MOVE 1, HR8191
 RET//═══════════════════════════════════════════════════════════════════════════════*/RET
@@ -373,12 +377,6 @@ Kinco: //═══════════════════════�
 	GT kMinEnvioFTP, 0, P256							//								║
 		IF P256 TCPY kMinEnvioFTP, 1, MinEnvioFTP		// 								║
 		IF NOT P256 TCPY MinEnvioFTP, 1, kMinEnvioFTP	// 								║
-
-	TCPY Version, 1, kVersionInventia					// 								║
-	TCPY Alarmas1, 1, kAlarmas							// 								║
-	TCPY Estados1, 1, kEstados							// 								║
-	TCPY kTelemandos, 1, Telemandos						// 								║
-	TCPY kPermisivos, 1, Permisivos1					// 								║
 RET//═══════════════════════════════════════════════════════════════════════════════*/RET
 Alarmas: //═════════════════════════════════════════════════════════════════════════════╗
 MOVE 0, Tabla16										// Borra bits temporales			║
@@ -388,148 +386,146 @@ MOVE 0, Tabla16										// Borra bits temporales			║
 	NOTV FS1_gsm, Alarma14							// GSM OK							║
 	NOTV FS1_gprs, Alarma15							// GPRS OK							║
 RET//═══════════════════════════════════════════════════════════════════════════════*/RET
-SMS: //═════════════════════════════════════════════════════════════════════════════════════════════════════╗
-	EQ kHoras, HoraEnvio, P256					// ┐ 														║
-	IF Permisivo11 MOVE 1, P256					//	Para prueba de envío SMS cada hora
-		IF P256	EQ kMinutos, MinEnvio, P256		// ├─> Activa envío automático								║
-		IF P256	LT RTC_Sec, 2, Telemando2		// ┘														║
-
-	OR Telemando2, Telemando3, P256				//															║
-	OR Telemando4, P256, P256					//															║
-	IF P256 TCPY kTel, 10, HR2000				// Configurar registro en GSM->Authorized numbers->Phone	║
-	OR Telemando8, Telemando9, P255				//															║
-	OR Telemando10, P255, P255					//															║
-	IF P255 TCPY kTel2, 10, HR2000				// Configurar registro en GSM->Authorized numbers->Phone	║
-
+Analogicas: //══════════════════════════════════════════════════════════════════════════════════╗
+NOTV P1SL1_ok, P256										// ┐									║
+	IF RISE FS2_rtc_min ADD P256, Conteo2, Conteo2		// ├─> Falla comm Tx Caudal				║
+	MUL Conteo2, P256, Conteo2							// │									║
+	GT Conteo2, 9, Alarma13								// ┘									║
+//══════════════════════════════════════════════════════════════════════════════════════════════╣
+	EQ TipoDatoCaudal, 0, P256							// ┐									║
+		IF P256 FLO2INT Gasto, 2, DREG128				// ├─>32 bits, l/s, flotante			║
+		IF P256 MUL DREG128, 3.6, kGasto				// │									║
+//──────────────────────────────────────────────────────────────────────────────────────────────╣
+	EQ TipoDatoCaudal, 1, P256							// ┐									║
+		IF P256 FLO2INT Gasto, 2, kGasto				// ├─> Medidor Chino					║
+//──────────────────────────────────────────────────────────────────────────────────────────────╣
+	EQ TipoDatoCaudal, 2, P256							// ┐									║
+		IF P256 FLO2INT Gasto, 2, kGasto				// 32 bits, l/s, flotante				║
+//══════════════════════════════════════════════════════════════════════════════════════════════╣
+	EQ TipoDatoTotal, 0, P256							// ┐									║
+		IF P256 FLO2INT Vol, 0, kVol					// ┘									║
+//──────────────────────────────────────────────────────────────────────────────────────────────╣
+	EQ TipoDatoTotal, 1, P256							// ┐									║
+		IF P256 DIV Vol, 10, kVol						// ┘									║
+//──────────────────────────────────────────────────────────────────────────────────────────────╣
+	EQ TipoDatoTotal, 2, P256							// ┐									║
+		IF P256 FLO2INT Vol, 0, kVol					// 32 bits, l/s, flotante				║
+RET //══════════════════════════════════════════════════════════════════════════════════════*/RET
+SMS: //═════════════════════════════════════════════════════════════════════════════════════════════════╗
+	IF P2 MOVE 1, kID						// ┐														║
+	IF P3 MOVE 2, kID						// ├─> Asigna ID correspondiente al tipo de mensaje			║
+	IF P4 MOVE 3, kID						// │														║
+	IF P8 MOVE 1, kID						// ┐														║
+	IF P9 MOVE 2, kID						// ├─> Asigna ID correspondiente al tipo de mensaje			║
+	IF P10 MOVE 3, kID						// │														║
+	
+	EQ kHoras, HoraEnvio, P256				// ┐ 														║
+	IF Permisivo11 MOVE 1, P256				// │   Para prueba de envío SMS cada hora					║
+		IF P256	EQ kMinutos, MinEnvio, P256	// ├─> Activa envío automático								║
+		IF P256	LT RTC_Sec, 2, Telemando2	// ┘														║
+	OR Telemando2, Telemando3, P256			//															║
+	OR Telemando4, P256, P256				//															║
+	IF P256 TCPY kTel, 10, HR2000			// Configurar registro en GSM->Authorized numbers->Phone	║
+	OR Telemando8, Telemando9, P255			//															║
+	OR Telemando10, P255, P255				//															║
+	IF P255 TCPY kTel2, 10, HR2000			// Configurar registro en GSM->Authorized numbers->Phone	║
 	OR P256, P255, P254
 	IF NOT P254 RET
-//	TCPY Tel, 10, NumTel1				// Copia número telefónico											║
-	IF P256 MOVE kDia, kDUltimoSMS				// ┐														║
-	IF P256 MOVE kMes, kMUltimoSMS				// │														║
-	IF P256 MOVE kAño, kAUltimoSMS				// ├─>														║
-	IF P256 MOVE kHoras, kHrUltimoSMS			// │														║
-	IF P256 MOVE kMinutos, kMinUltimoSMS		// ┘														║
-	IF P255 MOVE kDia, kDUltimoSMS2				// ┐														║
-	IF P255 MOVE kMes, kMUltimoSMS2				// │														║
-	IF P255 MOVE kAño, kAUltimoSMS2				// ├─>														║
-	IF P255 MOVE kHoras, kHrUltimoSMS2			// │														║
-	IF P255 MOVE kMinutos, kMinUltimoSMS2		// ┘														║
-
+//	TCPY Tel, 10, NumTel1					// Copia número telefónico									║
+	IF P256 MOVE kDia, kDUltimoSMS			// ┐														║
+	IF P256 MOVE kMes, kMUltimoSMS			// │														║
+	IF P256 MOVE kAño, kAUltimoSMS			// ├─>														║
+	IF P256 MOVE kHoras, kHrUltimoSMS		// │														║
+	IF P256 MOVE kMinutos, kMinUltimoSMS	// ┘														║
+	IF P255 MOVE kDia, kDUltimoSMS2			// ┐														║
+	IF P255 MOVE kMes, kMUltimoSMS2			// │														║
+	IF P255 MOVE kAño, kAUltimoSMS2			// ├─>														║
+	IF P255 MOVE kHoras, kHrUltimoSMS2		// │														║
+	IF P255 MOVE kMinutos, kMinUltimoSMS2	// ┘														║
 	MOVE 0, kTelemandos
-// Contenido del SMS ───────────────────────────────────────────────────────────────────────────────╣
-	IF P2 MOVE 1, kID					// ┐														║
-	IF P3 MOVE 2, kID					// ├─> Asigna ID correspondiente al tipo de mensaje			║
-	IF P4 MOVE 3, kID					// │														║
-	IF P8 MOVE 1, kID					// ┐														║
-	IF P9 MOVE 2, kID					// ├─> Asigna ID correspondiente al tipo de mensaje			║
-	IF P10 MOVE 3, kID					// │														║
-	MOVE 77, kTipo						// ┘														║
-TCPY HR6300, 128, HR6000				// Limpia buffer principal									║
-	NUM2TXT ID, 10, HR6000				// Tipo de mensaje (1-3) 									║
-TCPY HR6300, 128, HR6200				// ┐														║
-MOVE 124, HR6200						// ├─> Separa y limpia										║
-TXTCAT HR6200, 128, HR6000				// │														║
-TCPY HR6300, 128, HR6200				// ┘														║
-	MOVE Tipo, HR6200					// Tipo de equipo "M" o "QA"								║
-TXTCAT HR6200, 128, HR6000				// ┐														║
-TCPY HR6300, 128, HR6200				// │														║
-MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
-TXTCAT HR6200, 128, HR6000				// │														║
-TCPY HR6300, 128, HR6200				// ┘														║
-	NUM2TXT kAño, 40, HR6200			// Año														║
-	NUM2TXT kMes, 20, HR6204			// Mes														║
-	NUM2TXT kDia, 20, HR6206			// Día														║
-TXTCAT HR6200, 128, HR6000				// ┐														║
-TCPY HR6300, 128, HR6200				// │														║
-MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
-TXTCAT HR6200, 128, HR6000				// │														║
-TCPY HR6300, 128, HR6200				// ┘														║
-	NUM2TXT kHoras, 20, HR6200			// Horas													║
-	NUM2TXT kMinutos, 20, HR6202		// Minutos													║
-	NUM2TXT kSegundos, 20, HR6204		// Segundos													║
-TXTCAT HR6200, 128, HR6000				// ┐														║
-TCPY HR6300, 128, HR6200				// │														║
-MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
-TXTCAT HR6200, 128, HR6000				// │														║
-TCPY HR6300, 128, HR6200				// ┘														║
-	TCPY RFC, 13, HR6200				// Copia RFC ()												║
-TXTCAT HR6200, 128, HR6000				// ┐														║
-TCPY HR6300, 128, HR6200				// │														║
-MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
-TXTCAT HR6200, 128, HR6000				// │														║
-TCPY HR6300, 128, HR6200				// ┘														║
-	TXTCPY kNSM, 17, HR6200				// Copia NSM												║
-TXTCAT HR6200, 128, HR6000				// ┐														║
-TCPY HR6300, 128, HR6200				// │														║
-MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
-TXTCAT HR6200, 128, HR6000				// │														║
-TCPY HR6300, 128, HR6200				// ┘														║
-	TXTCPY kNSUE, 17, HR6200			// Copia NSUE												║
-TXTCAT HR6200, 128, HR6000				// ┐														║
-TCPY HR6300, 128, HR6200				// │														║
-MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
-TXTCAT HR6200, 128, HR6000				// │														║
-TCPY HR6300, 128, HR6200				// ┘														║
-	TXTCPY kNSUT, 17, HR6200			// Copia NSUT												║
-TXTCAT HR6200, 128, HR6000				// ┐														║
-//TCPY HR6300, 128, HR6200				// │														║
-//MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
+// Contenido del SMS ───────────────────────────────────────────────────────────────────────────────────╣
+	MOVE 77, kTipo							// ┘														║
+TCPY HR6300, 128, HR6000					// Limpia buffer principal									║
+	NUM2TXT ID, 10, HR6000					// Tipo de mensaje (1-3) 									║
+TCPY HR6300, 128, HR6200					// ┐														║
+MOVE 124, HR6200							// ├─> Separa y limpia										║
+TXTCAT HR6200, 128, HR6000					// │														║
+TCPY HR6300, 128, HR6200					// ┘														║
+	MOVE Tipo, HR6200						// Tipo de equipo "M" o "QA"								║
+TXTCAT HR6200, 128, HR6000					// ┐														║
+TCPY HR6300, 128, HR6200					// │														║
+MOVE 124, HR6200							// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000					// │														║
+TCPY HR6300, 128, HR6200					// ┘														║
+	NUM2TXT kAño, 40, HR6200				// Año														║
+	NUM2TXT kMes, 20, HR6204				// Mes														║
+	NUM2TXT kDia, 20, HR6206				// Día														║
+TXTCAT HR6200, 128, HR6000					// ┐														║
+TCPY HR6300, 128, HR6200					// │														║
+MOVE 124, HR6200							// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000					// │														║
+TCPY HR6300, 128, HR6200					// ┘														║
+	NUM2TXT kHoras, 20, HR6200				// Horas													║
+	NUM2TXT kMinutos, 20, HR6202			// Minutos													║
+	NUM2TXT kSegundos, 20, HR6204			// Segundos													║
+TXTCAT HR6200, 128, HR6000					// ┐														║
+TCPY HR6300, 128, HR6200					// │														║
+MOVE 124, HR6200							// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000					// │														║
+TCPY HR6300, 128, HR6200					// ┘														║
+	TCPY RFC, 13, HR6200					// Copia RFC ()												║
+TXTCAT HR6200, 128, HR6000					// ┐														║
+TCPY HR6300, 128, HR6200					// │														║
+MOVE 124, HR6200							// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000					// │														║
+TCPY HR6300, 128, HR6200					// ┘														║
+	TXTCPY kNSM, 17, HR6200					// Copia NSM												║
+TXTCAT HR6200, 128, HR6000					// ┐														║
+TCPY HR6300, 128, HR6200					// │														║
+MOVE 124, HR6200							// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000					// │														║
+TCPY HR6300, 128, HR6200					// ┘														║
+	TXTCPY kNSUE, 17, HR6200				// Copia NSUE												║
+TXTCAT HR6200, 128, HR6000					// ┐														║
+TCPY HR6300, 128, HR6200					// │														║
+MOVE 124, HR6200							// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6000					// │														║
+TCPY HR6300, 128, HR6200					// ┘														║
+	TXTCPY kNSUT, 17, HR6200				// Copia NSUT												║
+TXTCAT HR6200, 128, HR6000					// ┐														║
+//TCPY HR6300, 128, HR6200					// │														║
+//MOVE 124, HR6200							// ├─> Concatena, separa y limpia							║
 //TXTCAT HR6200, 128, HR6000				// │														║
-//TCPY HR6300, 128, HR6200				// ┘														║
+//TCPY HR6300, 128, HR6200					// ┘														║
 
-//TCPY HR6300, 128, HR6100				// │														║
-//MOVE 124, HR6100						// ├─> Concatena, separa y limpia							║
-TCPY HR6300, 128, HR6100				// ┘														║
-	TXTCPY kLat, 11, HR6100				// Mueve Latitud											║
+//TCPY HR6300, 128, HR6100					// │														║
+//MOVE 124, HR6100							// ├─> Concatena, separa y limpia							║
+TCPY HR6300, 128, HR6100					// ┘														║
+	TXTCPY kLat, 11, HR6100					// Mueve Latitud											║
 //TXTCAT HR6200, 128, HR6100				// ┐														║
-TCPY HR6300, 128, HR6200				// │														║
-MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
-TXTCAT HR6200, 128, HR6100				// │														║
-TCPY HR6300, 128, HR6200				// ┘														║
-	TXTCPY kLong, 15, HR6200			// Mueve Longitud											║
-TXTCAT HR6200, 128, HR6100				// ┐														║
-TCPY HR6300, 128, HR6200				// │														║
-MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
-TXTCAT HR6200, 128, HR6100				// │														║
-TCPY HR6300, 128, HR6200				// ┘														║
-	NUM2TXT kKer, 30, HR6200			// Mueve Ker												║
-TXTCAT HR6200, 128, HR6100				// ┐														║
-TCPY HR6300, 128, HR6200				// │														║
-MOVE 124, HR6200						// ├─> Concatena, separa y limpia							║
-TXTCAT HR6200, 128, HR6100				// │														║
-TCPY HR6300, 128, HR6200				// ┘														║
-	MOVE 85, HR6200						// 															║
-	MOVE 86, HR6201						// 															║
-	NUM2TXT kUV, 30, HR6202				// Mueve UV													║
-TXTCAT HR6200, 128, HR6100				// ┐														║
-TCPY HR6300, 128, HR6200				// ├─> Concatena y limpia									║
-TXTCAT HR6200, 128, HR6100				// ┘														║
-RET //══════════════════════════════════════════════════════════════════════════════════════════*/RET
-Analogicas: //══════════════════════════════════════════════════════════════════════════════════════╗
-	EQ TipoDatoCaudal, 0, P256								// ┐									║
-		IF P256 FLO2INT Gasto, 2, DREG128					// ├─>32 bits, l/s, flotante			║
-		IF P256 MUL DREG128, 3.6, kGasto					// │									║
-
-NOTV P1SL1_ok, P256								// ┐								║
-	IF RISE FS2_rtc_min ADD P256, Conteo2, Conteo2	// ├─> Falla comm Tx Caudal			║
-	MUL Conteo2, P256, Conteo2						// │								║
-	GT Conteo2, 9, Alarma13							// ┘								║
-
-	EQ TipoDatoCaudal, 1, P256								// ┐									║
-		IF P256 FLO2INT Gasto, 2, kGasto				 	// ├─> Medidor Chino					║
-
-	EQ TipoDatoCaudal, 2, P256								// ┐									║
-		IF P256 FLO2INT Gasto, 2, kGasto					// 32 bits, l/s, flotante
-
-	EQ TipoDatoTotal, 0, P256								// ┐									║
-		IF P256 FLO2INT Vol, 0, kVol						// ┘									║
-
-	EQ TipoDatoTotal, 1, P256								// ┐									║
-		IF P256 DIV Vol, 10, kVol							// ┘									║
-
-	EQ TipoDatoTotal, 2, P256								// ┐									║
-		IF P256 FLO2INT Vol, 0, kVol						// 32 bits, l/s, flotante
-RET //══════════════════════════════════════════════════════════════════════════════════════════*/RET
+TCPY HR6300, 128, HR6200					// │														║
+MOVE 124, HR6200							// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6100					// │														║
+TCPY HR6300, 128, HR6200					// ┘														║
+	TXTCPY kLong, 15, HR6200				// Mueve Longitud											║
+TXTCAT HR6200, 128, HR6100					// ┐														║
+TCPY HR6300, 128, HR6200					// │														║
+MOVE 124, HR6200							// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6100					// │														║
+TCPY HR6300, 128, HR6200					// ┘														║
+	NUM2TXT kKer, 30, HR6200				// Mueve Ker												║
+TXTCAT HR6200, 128, HR6100					// ┐														║
+TCPY HR6300, 128, HR6200					// │														║
+MOVE 124, HR6200							// ├─> Concatena, separa y limpia							║
+TXTCAT HR6200, 128, HR6100					// │														║
+TCPY HR6300, 128, HR6200					// ┘														║
+	MOVE 85, HR6200							// 															║
+	MOVE 86, HR6201							// 															║
+	NUM2TXT kUV, 30, HR6202					// Mueve UV													║
+TXTCAT HR6200, 128, HR6100					// ┐														║
+TCPY HR6300, 128, HR6200					// ├─> Concatena y limpia									║
+TXTCAT HR6200, 128, HR6100					// ┘														║
+RET //══════════════════════════════════════════════════════════════════════════════════════════════*/RET
 FTP: //═════════════════════════════════════════════════════════════════════════════════════════════╗
 /*	MOVE 0, Tabla16								// Borra bits temporales							║
 	EQ kHoras, HoraEnvioFTP, P256				// Compara hora actual con hora de envío			║
@@ -554,7 +550,7 @@ MOVE kMinutos, kMinUltimoFTP			// ┘														║
 	TCPY kCarpeta, 20, HR3300					// 													║
 	MOVE 47, HR3500								// Carga "/" (ASCII)								║
 TXTCAT HR3500, 128, HR3300						// Concatena "Nombre de carpeta" + "/"				║
-//──────────────────────────────────────────────────────────────
+//──────────────────────────────────────────────────────────────────────────────────────────────────╣
 	TCPY kRFC, 13, HR3501			// 																║
 MOVE 95, HR6200						// ├─> Concatena, separa y limpia							║
 TXTCAT HR6200, 128, HR3501			// │														║
@@ -586,7 +582,7 @@ TCPY HR6300, 128, HR6200			// ┘														║
 MOVE 116, HR6200					// ├─> Extensión del archivo								║
 TXTCAT HR6200, 128, HR3501			// │														║
 TCPY HR6300, 128, HR6200			// ┘														║
-
+//──────────────────────────────────────────────────────────────────────────────────────────────────╣
 	MOVE 13, HR5900					// Retorno de carro (ASCII)										║
 	MOVE 10, HR5901					// Nueva línea (ASCII)											║
 	MOVE 0, HR5902 					// CRLF -> HR5900 (temp2)										║
@@ -681,7 +677,7 @@ TCPY HR6300, 128, HR6200				// ┘														║
 TXTCAT HR6200, 128, HR6000				// ┐														║
 TCPY HR6300, 128, HR6200				// ├─> Concatena y limpia									║
 TXTCAT HR6200, 128, HR6000				// ┘														║
-
+//──────────────────────────────────────────────────────────────────────────────────────────────────╣
 	MOVE 1024, HR5000					// max. length												║
 	ADD 2048, HR5000, HR5000			// source: 1 ch/reg, destination: 2 ch/reg, LH				║** Todas las cadenas procesadas están en formato "1 carácter/registro"	║
 	TXTCPY HR6000, HR5000, HR4352		// load temp. buffer into main data buffer (starting from SECOND register!!)║#define UCS_TO_BIN 2048		// UCS->ASC_LH / Texto a secuencia binaria	║
